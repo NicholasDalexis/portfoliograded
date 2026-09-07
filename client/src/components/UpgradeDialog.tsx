@@ -1,132 +1,111 @@
-/*
- * Sunlit Glass — Upgrade dialog
- * A friendly, persuasive paywall sheet. Two plans: Free vs. Pro. The CTA is
- * a mock: clicking "Upgrade" toggles the unlocked state for the demo.
- */
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Check, Sparkles, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { JobSearchContext } from "@/components/JobSearchContext";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Check, Layers3, Loader2, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
+import { toast } from "sonner";
+import { fetchMe, startCheckout } from "@/lib/pro";
+import { track } from "@/lib/track";
+import { FREE_GRADING_FEATURES, PRICE_LABELS, PRO_GRADING_FEATURES } from "@shared/pricing";
 
 interface Props {
   open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onConfirm: () => void;
+  onOpenChange: (value: boolean) => void;
+  /** Kept for existing callers. Entitlement always comes from the server. */
+  onConfirm?: () => void;
+  headline?: string;
+  subline?: string;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  intent?: "upgrade" | "publish";
+  /** Set only when this deployment can serve a real published portfolio. */
+  publishingAvailable?: boolean;
 }
 
-const FREE = [
-  "Letter grade across 6 core categories",
-  "Top 3 fixes ranked by impact",
-  "Web + mobile preview",
-  "Bounce-rate estimate",
-];
+function FeatureList({ items }: { items: readonly string[] }) {
+  return <ul className="space-y-3">{items.map((item) => <li key={item} className="flex items-start gap-2.5 text-sm leading-relaxed"><Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" /><span>{item}</span></li>)}</ul>;
+}
 
-const PRO = [
-  "All 9 categories — including Accessibility, Discoverability, Conversion",
-  "Recruiter-grade context for every category",
-  "S-tier letter grade unlocked at 97+",
-  "Detailed drill-down on every check (3 per category)",
-  "Re-audit unlimited times for 30 days",
-  "Custom export as a recruiter-ready PDF",
-];
+export function UpgradeDialog({ open, onOpenChange, headline, subline, secondaryLabel, onSecondary, intent = "upgrade" }: Props) {
+  const opener = useRef<HTMLElement | null>(null);
+  const [busy, setBusy] = useState<"monthly" | "yearly" | null>(null);
+  const [billingReady, setBillingReady] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setBillingReady(false);
+    void fetchMe().then((me) => { if (active) setBillingReady(me.billingReady === true); }).catch(() => { if (active) setBillingReady(false); });
+    return () => { active = false; };
+  }, [open]);
+  useEffect(() => { if (open) track("paywall_shown", { variant: headline ?? intent }); }, [open, headline, intent]);
 
-export function UpgradeDialog({ open, onOpenChange, onConfirm }: Props) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn(
-          "max-w-[calc(100vw-1.5rem)] overflow-hidden p-0 sm:!max-w-4xl lg:!max-w-5xl sm:rounded-3xl",
-          "border border-white/70 bg-transparent shadow-none",
-        )}
-      >
-        <div className="glass-strong relative overflow-hidden rounded-3xl">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-1 opacity-90"
-            style={{
-              background:
-                "radial-gradient(60% 60% at 100% 0%, oklch(0.86 0.16 75 / 0.45), transparent 60%), radial-gradient(50% 60% at 0% 100%, oklch(0.82 0.14 55 / 0.35), transparent 60%)",
-            }}
-          />
-          <div className="relative max-h-[88vh] overflow-y-auto p-6 sm:p-8 lg:p-10">
-            <DialogHeader className="space-y-3 text-left">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[oklch(0.32_0.06_55)]">
-                <Sparkles className="h-3 w-3" /> FolioGrade Pro
+  async function checkout(plan: "monthly" | "yearly") {
+    if (busy || !billingReady) return;
+    setBusy(plan);
+    track("paywall_confirmed", { variant: headline ?? intent, plan });
+    try { await startCheckout(plan); }
+    catch (error) {
+      toast.error("Checkout didn't start", { description: error instanceof Error ? error.message : "Try again in a moment." });
+    } finally { setBusy(null); }
+  }
+
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent
+      showCloseButton={false}
+      onOpenAutoFocus={() => { opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+      onCloseAutoFocus={(event) => { if (opener.current?.isConnected) { event.preventDefault(); opener.current.focus(); } }}
+      className="max-h-[90dvh] w-[min(94vw,1100px)] max-w-[1100px] overflow-y-auto rounded-3xl border border-white/80 bg-[#fffaf0] p-0 shadow-xl sm:max-w-[1100px]"
+    >
+      <DialogClose aria-label="Close plans" className="pg-action-icon absolute right-3 top-3 z-10"><X aria-hidden="true" className="h-5 w-5" /></DialogClose>
+      <div className="relative p-5 sm:p-8 lg:p-10">
+        <DialogHeader className="max-w-3xl space-y-3 pr-10 text-left">
+          <p className="pg-brand-eyebrow flex items-center gap-2 text-amber-900"><Sparkles aria-hidden="true" className="h-4 w-4" /> Portfolio Graded Pro</p>
+          <DialogTitle className="font-display text-3xl font-bold leading-tight sm:text-4xl">{headline ?? "Start with a free grade. Go deeper with Pro."}</DialogTitle>
+          <DialogDescription className="max-w-2xl text-base leading-relaxed text-muted-foreground">{subline ?? "See what's working and what to improve. All initial grades stay visible. Sign in free for D-detail feedback. Pro is planned for a closer look at the work behind your homepage."}</DialogDescription>
+        </DialogHeader>
+
+        <JobSearchContext />
+
+        <div className="mt-7 grid items-start gap-5 lg:grid-cols-[0.72fr_1.28fr]">
+          <section aria-labelledby="free-plan-heading" className="order-2 rounded-2xl border border-stone-200/80 bg-white/65 p-5 sm:p-6 lg:order-1">
+            <div className="flex items-baseline justify-between gap-3"><h3 id="free-plan-heading" className="font-display text-2xl font-bold">Free</h3><span className="text-2xl font-bold">$0</span></div>
+            <p className="mb-5 mt-2 text-sm leading-relaxed text-muted-foreground">A useful first review, with clear next steps. No card needed.</p>
+            <FeatureList items={FREE_GRADING_FEATURES} />
+            <p className="mt-5 border-t border-stone-200 pt-4 text-sm leading-relaxed text-muted-foreground">Every initial category is included. Open B and other category feedback directly; D details ask for free Google sign-in. No card needed.</p>
+          </section>
+
+          <section aria-labelledby="pro-plan-heading" className="order-1 min-w-0 rounded-2xl border border-amber-300/80 bg-gradient-to-br from-[#fff0c8] to-[#fff9eb] p-5 sm:p-6 lg:order-2">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h3 id="pro-plan-heading" className="font-display text-2xl font-bold">Pro</h3><span className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-3 py-1 text-xs font-semibold text-amber-950"><Layers3 aria-hidden="true" className="h-3.5 w-3.5" /> Deeper reviews planned</span></div>
+            <p className="mb-5 mt-2 text-sm leading-relaxed text-muted-foreground">For the details beyond a first impression. These deeper checks are being prepared and are not included in the current review.</p>
+            <FeatureList items={PRO_GRADING_FEATURES} />
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="min-w-0 rounded-2xl border-2 border-amber-700/65 bg-white/80 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-900">Yearly <span className="normal-case tracking-normal">· Save {PRICE_LABELS.savings}</span></p>
+                <p className="mt-3"><span className="text-4xl font-bold tracking-tight">{PRICE_LABELS.yearly}</span><span className="text-sm text-muted-foreground"> / year</span></p>
+                <p className="mt-2 text-sm font-medium">About {PRICE_LABELS.yearlyMonthlyEquivalent}/month. Billed {PRICE_LABELS.yearly} upfront for the year.</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">About five months’ price for a full year. Save {PRICE_LABELS.yearlySavings} compared with 12 monthly payments ({PRICE_LABELS.twelveMonthlyTotal}).</p>
+                <button type="button" disabled={busy !== null || !billingReady} onClick={() => void checkout("yearly")} className="pg-action mt-4 w-full px-3">{busy === "yearly" && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}Choose yearly</button>
               </div>
-              <DialogTitle className="font-display text-3xl font-extrabold leading-tight sm:text-4xl">
-                Get the audit recruiters wish they could write.
-              </DialogTitle>
-              <DialogDescription className="text-base text-muted-foreground">
-                Pro turns your free grade into a working brief: the three drill-downs per category, the recruiter context, and the S-tier ceiling unlocked.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-7 grid gap-5 md:grid-cols-2 lg:gap-6">
-              <div className="rounded-2xl border border-white/70 bg-white/55 p-5 sm:p-6 backdrop-blur-md">
-                <div className="flex items-baseline justify-between">
-                  <p className="font-display text-xl font-bold">Free</p>
-                  <p className="font-mono text-sm text-muted-foreground">$0</p>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">Your grade, the highlights, the hook.</p>
-                <ul className="mt-4 space-y-2.5">
-                  {FREE.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.6_0.1_140)]" />
-                      <span className="text-foreground">{f}</span>
-                    </li>
-                  ))}
-                  <li className="flex items-start gap-2 text-sm opacity-50">
-                    <X className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>S-tier grade & full drill-downs</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div
-                className="relative rounded-2xl border border-[oklch(0.78_0.16_70_/_0.4)] p-5 sm:p-6"
-                style={{
-                  background:
-                    "linear-gradient(140deg, oklch(0.96 0.06 80 / 0.85), oklch(0.94 0.05 65 / 0.75))",
-                  boxShadow: "inset 0 1px 0 oklch(1 0 0 / 0.7), 0 30px 60px -30px oklch(0.7 0.16 65 / 0.45)",
-                }}
-              >
-                <div className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-[oklch(0.18_0.04_50)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[oklch(0.96_0.06_80)]">
-                  <Sparkles className="h-3 w-3" /> Recommended
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <p className="font-display text-xl font-bold">Pro</p>
-                  <p className="font-mono text-sm">
-                    <span className="text-base font-bold text-foreground">$12</span>
-                    <span className="text-muted-foreground"> / mo</span>
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">Everything Free, plus the S-tier ceiling.</p>
-                <ul className="mt-4 space-y-2.5">
-                  {PRO.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.55_0.16_60)]" />
-                      <span className="text-foreground">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onConfirm();
-                    onOpenChange(false);
-                  }}
-                  className="foil mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-[oklch(0.18_0.04_50)] shadow-[inset_0_1px_0_oklch(1_0_0_/_0.85),0_18px_36px_-18px_oklch(0.7_0.16_65_/_0.6)]"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Unlock Pro audit
-                </button>
-                <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                  Demo paywall — no card needed.
-                </p>
+              <div className="min-w-0 rounded-2xl border border-stone-300 bg-white/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Monthly <span className="normal-case tracking-normal">· More flexibility</span></p>
+                <p className="mt-3"><span className="text-4xl font-bold tracking-tight">{PRICE_LABELS.monthly}</span><span className="text-sm text-muted-foreground"> / month</span></p>
+                <p className="mt-2 text-sm font-medium">Billed {PRICE_LABELS.monthly} each month.</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">A smaller first payment if you prefer to go month by month.</p>
+                <button type="button" disabled={busy !== null || !billingReady} onClick={() => void checkout("monthly")} className="pg-action-secondary mt-4 min-h-12 w-full">{busy === "monthly" && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}Choose monthly</button>
               </div>
             </div>
-          </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{billingReady ? "Prices in USD. Your plan renews at the displayed yearly or monthly price until canceled. Cancel before renewal to avoid the next charge." : "Payments are off in this preview. Planned subscriptions renew at the displayed yearly or monthly price until canceled. Your initial grade and category explanations stay free; D details need Google sign-in."}</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Paying never buys a higher numerical grade. The separate S row highlights personal standout strengths supported by the evidence. It is relative to your portfolio, and no grade or standout guarantees an interview or a job.</p>
+          </section>
         </div>
-      </DialogContent>
-    </Dialog>
-  );
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-amber-900/10 pt-5">
+          <button type="button" onClick={secondaryLabel && onSecondary ? onSecondary : () => onOpenChange(false)} className="pg-action-secondary">{secondaryLabel && onSecondary ? secondaryLabel : "Keep using Free"}</button>
+          <Link href="/pricing" onClick={() => onOpenChange(false)} className="pg-action-secondary">See more about plans →</Link>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>;
 }

@@ -1,13 +1,35 @@
 @import "tailwindcss";
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+@media print {
+  header, footer, [data-sonner-toaster], [role="dialog"], .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  * { box-shadow: none !important; backdrop-filter: none !important; animation: none !important; }
+  section, tr { break-inside: avoid; }
+}
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * portfolio graded — Sunlit Glass design system
+ * Direction: Apple liquid glass over a cream canvas with Flower Boy
+ * (peach -> marigold -> amber) used as brand atmosphere, not UI wallpaper.
+ * Type: Fraunces (display serif) + Manrope (UI sans, Proxima-Nova-adjacent).
+ */
+
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 18px);
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -40,85 +62,115 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-peach: oklch(0.82 0.14 55);
+  --color-marigold: oklch(0.86 0.16 85);
+  --color-amber: oklch(0.88 0.14 95);
+  --color-ink: oklch(0.22 0.02 60);
+  --color-cream: oklch(0.98 0.012 85);
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --radius: 1rem;
+  /* Original Go Pro foil. In v1.1.8, only explicit primary actions use it. */
+  --pg-action-gradient: linear-gradient(
+    120deg,
+    oklch(0.86 0.14 80) 0%,
+    oklch(0.95 0.06 90) 30%,
+    oklch(0.78 0.18 60) 50%,
+    oklch(0.95 0.06 90) 70%,
+    oklch(0.86 0.14 80) 100%
+  );
+
+  /* Cream canvas base */
+  --background: oklch(0.98 0.012 85);
+  --foreground: oklch(0.22 0.02 60);
+
+  /* Glass surfaces — translucent warm white */
+  --card: oklch(1 0.005 85 / 0.72);
+  --card-foreground: oklch(0.22 0.02 60);
+  --popover: oklch(1 0.005 85 / 0.92);
+  --popover-foreground: oklch(0.22 0.02 60);
+
+  /* Brand color — deep marigold for primary actions, ink as default text */
+  --primary: oklch(0.7 0.18 75);
+  --primary-foreground: oklch(0.18 0.02 60);
+
+  --secondary: oklch(0.95 0.02 80);
+  --secondary-foreground: oklch(0.32 0.03 60);
+
+  --muted: oklch(0.94 0.015 80);
+  --muted-foreground: oklch(0.48 0.02 60);
+
+  --accent: oklch(0.93 0.04 80);
+  --accent-foreground: oklch(0.22 0.02 60);
+
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.22 0.02 60 / 0.08);
+  --input: oklch(0.22 0.02 60 / 0.1);
+  --ring: oklch(0.78 0.16 70);
+
+  --chart-1: oklch(0.82 0.14 55);
+  --chart-2: oklch(0.86 0.16 75);
+  --chart-3: oklch(0.88 0.14 95);
+  --chart-4: oklch(0.7 0.1 60);
+  --chart-5: oklch(0.55 0.06 60);
+
+  --sidebar: oklch(0.97 0.012 85);
+  --sidebar-foreground: oklch(0.22 0.02 60);
+  --sidebar-primary: oklch(0.7 0.18 75);
+  --sidebar-primary-foreground: oklch(0.18 0.02 60);
+  --sidebar-accent: oklch(0.93 0.04 80);
+  --sidebar-accent-foreground: oklch(0.22 0.02 60);
+  --sidebar-border: oklch(0.22 0.02 60 / 0.08);
+  --sidebar-ring: oklch(0.78 0.16 70);
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --background: oklch(0.18 0.015 60);
+  --foreground: oklch(0.94 0.01 80);
+  --card: oklch(0.24 0.015 60 / 0.6);
+  --card-foreground: oklch(0.94 0.01 80);
+  --popover: oklch(0.24 0.015 60 / 0.92);
+  --popover-foreground: oklch(0.94 0.01 80);
+  --primary: oklch(0.78 0.16 75);
+  --primary-foreground: oklch(0.18 0.02 60);
+  --secondary: oklch(0.28 0.015 60);
+  --secondary-foreground: oklch(0.85 0.01 80);
+  --muted: oklch(0.28 0.015 60);
+  --muted-foreground: oklch(0.7 0.01 80);
+  --accent: oklch(0.32 0.04 70);
+  --accent-foreground: oklch(0.94 0.01 80);
+  --destructive: oklch(0.7 0.19 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 0.1);
+  --input: oklch(1 0 0 / 0.15);
+  --ring: oklch(0.78 0.16 70);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 12% -10%, oklch(0.86 0.16 75 / 0.35), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.82 0.14 55 / 0.22), transparent 65%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -131,100 +183,255 @@
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
   }
+  ::selection {
+    background: oklch(0.86 0.16 75 / 0.4);
+    color: oklch(0.18 0.02 60);
+  }
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
-    padding-right: 1rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
-
-  .flex {
-    min-height: 0;
-    min-width: 0;
-  }
-
+  .flex { min-height: 0; min-width: 0; }
   @media (min-width: 640px) {
-    .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
-      padding-right: 1.5rem;
-    }
+    .container { padding-left: 2rem; padding-right: 2rem; }
   }
-
   @media (min-width: 1024px) {
-    .container {
-      padding-left: 2rem; /* 32px - desktop padding */
-      padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
-    }
+    .container { padding-left: 2.5rem; padding-right: 2.5rem; max-width: 1280px; }
   }
-}
-/* ============================================================
-   Sunlit Glass utilities (referenced across header, pages, cards)
-   Restored as part of the platform migration.
-   ============================================================ */
 
-.font-display {
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.02em;
-}
+  /* Liquid glass surface */
+  .glass {
+    background: linear-gradient(
+      135deg,
+      oklch(1 0.005 85 / 0.78) 0%,
+      oklch(1 0.005 85 / 0.55) 100%
+    );
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid oklch(1 0 0 / 0.55);
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.7) inset,
+      0 30px 60px -30px oklch(0.22 0.02 60 / 0.18),
+      0 8px 24px -16px oklch(0.22 0.02 60 / 0.12);
+  }
+  .glass-strong {
+    background: linear-gradient(
+      135deg,
+      oklch(1 0.005 85 / 0.92) 0%,
+      oklch(1 0.005 85 / 0.7) 100%
+    );
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 0.6);
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.8) inset,
+      0 40px 80px -40px oklch(0.22 0.02 60 / 0.25),
+      0 12px 32px -20px oklch(0.22 0.02 60 / 0.15);
+  }
+  .glass-tinted {
+    background: linear-gradient(
+      135deg,
+      oklch(0.96 0.06 80 / 0.85) 0%,
+      oklch(0.94 0.05 65 / 0.7) 100%
+    );
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 0.5);
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.7) inset,
+      0 20px 40px -24px oklch(0.7 0.16 70 / 0.25);
+  }
 
-.container {
-  width: 100%;
-  max-width: 1120px;
-  margin-inline: auto;
-  padding-inline: 1.25rem;
-}
+  /* Brand gradient utilities */
+  .grad-flowerboy {
+    background: linear-gradient(
+      100deg,
+      oklch(0.82 0.14 55) 0%,
+      oklch(0.86 0.16 75) 50%,
+      oklch(0.88 0.14 95) 100%
+    );
+  }
+  .grad-flowerboy-soft {
+    background: linear-gradient(
+      100deg,
+      oklch(0.82 0.14 55 / 0.18) 0%,
+      oklch(0.86 0.16 75 / 0.14) 50%,
+      oklch(0.88 0.14 95 / 0.18) 100%
+    );
+  }
+  .grad-text {
+    background: linear-gradient(
+      100deg,
+      oklch(0.7 0.19 50) 0%,
+      oklch(0.78 0.18 75) 55%,
+      oklch(0.78 0.16 95) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 
-/* Warm amber→gold gradient text used on key words */
-.grad-text {
-  background: linear-gradient(110deg, oklch(0.72 0.17 45), oklch(0.82 0.15 75), oklch(0.86 0.13 92));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
+  /* Headings use this same bright orange-to-yellow text treatment.
+     Nic explicitly restored the original hues in v1.1.7. */
 
-/* The half-sun / flower-boy gradient swatch used in the logo mark */
-.grad-flowerboy {
-  background: linear-gradient(135deg, oklch(0.86 0.14 60), oklch(0.9 0.13 80), oklch(0.92 0.11 95));
-}
+  /* Grain texture overlay */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
 
-/* Frosted glass surface */
-.glass {
-  background: oklch(1 0 0 / 0.7);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid oklch(1 0 0 / 0.7);
-  box-shadow: 0 20px 50px -30px oklch(0.5 0.05 65 / 0.35);
-}
+  /* Original Go Pro shimmer, shared by deliberate action controls. */
+  .foil {
+    background: var(--pg-action-gradient);
+    background-size: 220% 100%;
+    animation: foil-pan 6s linear infinite;
+  }
+  @keyframes foil-pan {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 220% 50%; }
+  }
 
-.glass-strong {
-  background: oklch(1 0 0 / 0.82);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid oklch(1 0 0 / 0.75);
-}
+  /* Scanning sweep used during audit */
+  @keyframes sweep {
+    0% { transform: translateY(-110%); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateY(110%); opacity: 0; }
+  }
+  .sweep-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 30%;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      oklch(0.86 0.16 75 / 0.35) 45%,
+      oklch(0.88 0.14 95 / 0.5) 50%,
+      oklch(0.86 0.16 75 / 0.35) 55%,
+      transparent 100%
+    );
+    filter: blur(8px);
+    animation: sweep 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    pointer-events: none;
+  }
 
-/* Warm page atmosphere */
-.sunlit-bg {
-  background:
-    radial-gradient(60% 50% at 85% 0%, oklch(0.92 0.09 80 / 0.55), transparent 60%),
-    radial-gradient(50% 55% at 0% 100%, oklch(0.88 0.1 55 / 0.4), transparent 60%),
-    oklch(0.99 0.01 85);
+  /* Soft entrance */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .rise { animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Hover lift for cards */
+  .lift {
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Neutral task controls are the default. Add pg-action-primary only to
+     Go Pro and the main grading action; selection/navigation keep their styles. */
+  .pg-action, .pg-action-secondary, .pg-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 9999px;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    font-weight: 700;
+    text-align: center;
+    color: var(--foreground);
+    background: oklch(1 0.005 85 / 0.75);
+    border: 1px solid oklch(0.22 0.02 60 / 0.25);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.75);
+    transition: background-color 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  }
+  .pg-action-secondary {
+    min-height: 2.75rem;
+  }
+  .pg-action-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  :is(.pg-action, .pg-action-secondary, .pg-action-icon):not(.pg-action-primary):hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: oklch(0.93 0.04 80);
+  }
+  .pg-action-primary {
+    color: oklch(0.18 0.04 50);
+    background: var(--pg-action-gradient);
+    background-size: 220% 100%;
+    border-color: oklch(0.6 0.1 60 / 0.25);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.75), 0 12px 24px -18px oklch(0.52 0.12 60 / 0.3);
+    animation: foil-pan 6s linear infinite;
+  }
+  .pg-action-primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.85), 0 12px 28px -16px oklch(0.45 0.12 60 / 0.4);
+  }
+  :is(.pg-action, .pg-action-secondary, .pg-action-icon):focus-visible {
+    outline: 2px solid oklch(0.22 0.02 60);
+    outline-offset: 3px;
+  }
+  :is(.pg-action, .pg-action-secondary, .pg-action-icon):is(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
+    opacity: 1;
+    color: oklch(0.32 0.03 60);
+    animation: none;
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5);
+  }
+  .pg-action-primary:is(:disabled, [aria-disabled="true"]) {
+    filter: saturate(0.45);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .foil, .pg-action-primary { animation: none; }
+  }
+  .pg-brand-eyebrow {
+    font-family: var(--font-sans);
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .pg-page-title {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .pg-footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0.5rem 0;
+    text-underline-offset: 4px;
+  }
+  .pg-footer-links a:hover { color: var(--foreground); text-decoration: underline; }
+  .pg-footer-links a:focus-visible {
+    outline: 2px solid oklch(0.46 0.1 60);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  @media (min-width: 640px) { .pg-page-title { font-size: 3rem; } }
 }

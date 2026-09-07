@@ -1,78 +1,120 @@
 /*
- * Method — "How we read your portfolio."
- * Mirrors the live marketing copy: an opinionated, recruiter-lens grading
- * philosophy laid out as five numbered principles.
+ * Sunlit Glass. Method page
+ * Explains how the audit thinks, who it's for, and the editorial point of
+ * view behind the grade. Editorial layout, generous whitespace.
  */
-import { useLocation } from "wouter";
+import { Link } from "wouter";
+import { ArrowRight } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
-const PRINCIPLES = [
-  {
-    n: "01",
-    title: "A grade should be a verdict, not a vibe.",
-    body: "A 78/100 doesn't help you. A B+ with three named fixes does. Every audit produces one overall letter, one per category, and a ranked fix list — that's it.",
-  },
-  {
-    n: "02",
-    title: "Recruiters open portfolios on phones.",
-    body: "Mobile is the default audit, not an afterthought. Anything that falls apart on a phone fails the audit, no matter how nice the desktop layout looks.",
-  },
-  {
-    n: "03",
-    title: "Craft and clarity are weighted equally.",
-    body: "A beautiful site that doesn't say what you do gets the same penalty as a clear site that looks rushed. The grade rewards the rare combination of both.",
-  },
-  {
-    n: "04",
-    title: "Pro exists for the categories that quietly cost interviews.",
-    body: "Accessibility, discoverability, and conversion path don't show up on most portfolio reviews — and they're often what separates an A- from an A. Pro surfaces them.",
-  },
-  {
-    n: "05",
-    title: "The S grade is rare on purpose.",
-    body: "S is reserved for portfolios that score 97+ with Pro active. We hold it back so it actually means something when you see it.",
-  },
-];
+const ATMOSPHERE_BG =
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663468975365/JXRW8Prgas3RMo8cBvY8Y3/device_mockup_atmosphere-6Xc9ga4yQJ6pLq6nHbG5Zt.webp";
 
 export default function Method() {
-  const [, navigate] = useLocation();
   return (
-    <div className="sunlit-bg min-h-screen">
-      <SiteHeader onUpgrade={() => navigate("/pricing")} />
-      <main className="container py-12 sm:py-16">
+    <div className="relative min-h-screen overflow-x-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          backgroundImage: `url(${ATMOSPHERE_BG})`,
+          backgroundSize: "cover",
+          backgroundPosition: "left top",
+          opacity: 0.5,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, oklch(0.98 0.012 85 / 0.7) 0%, oklch(0.98 0.012 85 / 0.96) 60%, oklch(0.98 0.012 85) 100%)",
+        }}
+      />
+      <SiteHeader />
+      <main className="container pt-14 sm:pt-20">
         <div className="grid gap-10 lg:grid-cols-12">
-          {/* Left rail */}
-          <header className="lg:col-span-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[oklch(0.5_0.07_60)]">Method</p>
-            <h1 className="mt-3 font-display text-4xl font-extrabold leading-tight sm:text-5xl">
+          <aside className="lg:col-span-4">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
+              Method
+            </p>
+            <h1 className="mt-3 font-display text-5xl font-extrabold leading-[1.05] sm:text-6xl">
               How we read your <span className="grad-text">portfolio.</span>
             </h1>
-            <p className="mt-4 text-base text-muted-foreground">
-              PortfolioGraded is opinionated on purpose. We grade like a hiring lead would, not like a Lighthouse score. Speed matters, but so does the first sentence of your hero.
+            <p className="mt-4 text-muted-foreground">
+              A useful review explains what it found and what it could not check. Version 1.1 is an initial homepage review. It helps you choose your next edit, with the scope clearly marked.
             </p>
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[oklch(0.2_0.02_60)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[oklch(0.28_0.02_60)]"
+            <Link
+              href="/"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[oklch(0.18_0.04_50)] px-4 py-2.5 text-sm font-bold text-[oklch(0.97_0.04_85)]"
             >
-              Run an audit
-            </button>
-          </header>
+              Run an audit <ArrowRight className="h-4 w-4" />
+            </Link>
+          </aside>
 
-          {/* Principles */}
-          <div className="space-y-4 lg:col-span-8">
-            {PRINCIPLES.map((p) => (
-              <div key={p.n} className="glass rounded-[1.5rem] p-6 sm:p-7">
-                <p className="font-mono text-xs font-bold tracking-[0.2em] text-[oklch(0.6_0.1_70)]">{p.n}</p>
-                <h2 className="mt-2 font-display text-xl font-bold sm:text-2xl">{p.title}</h2>
-                <p className="mt-2 text-sm text-muted-foreground sm:text-base">{p.body}</p>
+          <article className="lg:col-span-8 space-y-6">
+            <Block
+              num="01"
+              title="One grade, with evidence."
+              body="Your overall grade combines category scores using the selected role’s weights. The tier list groups those categories from A to D. Click a card to see the evidence, a next step, and general guidance. Switching the screenshot changes the preview, not the grade."
+            />
+            <Block
+              num="02"
+              title="Recruiters open portfolios on phones."
+              body="Free includes desktop and mobile screenshots. The initial scan checks available mobile HTML signals. Screenshots let you inspect the layout yourself; this version does not yet score rendered layouts, tap targets or actual phone loading performance."
+            />
+            <Block
+              num="03"
+              title="A rubric for your kind of work."
+              body="Marketing, Social Media, Creative Technology, Photography, Copywriting, Graphic Design, Videography, UX/UI Design, Web Development and Fashion Design each have their own guidelines and weights. Leave the role blank or use an unlisted role for general portfolio guidance. Keywords alone cannot demonstrate the quality of your work."
+            />
+            <Block
+              num="04"
+              title="Know what was checked."
+              body="The report identifies whether AI assisted the homepage analysis or only the basic rules ran. Project pages, image quality, videos, rendered accessibility, measured speed and complete case-study outcomes still need a deeper review. A site that cannot be read should receive a clear error, not a confident grade."
+            />
+            <Block
+              num="05"
+              title="The S grade is rare on purpose."
+              body="S is reserved for verified deeper evidence. The initial scan tops out at A+ for everyone. A future Pro review will assess more evidence; payment itself will never improve a score. Grades offer direction, not a hiring guarantee."
+            />
+
+            {/* The founder story. why this product exists */}
+            <div className="glass-strong mt-4 rounded-3xl p-6 sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
+                Why this exists
+              </p>
+              <h3 className="mt-3 font-display text-2xl font-bold leading-snug sm:text-3xl">
+                A portfolio has to work when someone opens it.
+              </h3>
+              <div className="mt-4 space-y-3 text-[15px] leading-relaxed text-muted-foreground">
+                <p>
+                  My first portfolio was an Adobe Portfolio class project. It got the work online, but adding more projects became convoluted. Squarespace made building easier, so I added photography, design, marketing and video. Then I added too much.
+                </p>
+                <p>
+                  In interviews, people would open the site and wait for the images. They blamed the Wi-Fi. I knew the page was heavy. That is why this product pairs the work with the experience: a clear opening, a phone-friendly layout, fewer heavy assets, and a path to contact you.
+                </p>
+                <p className="font-semibold text-foreground">
+                  Start with one improvement: resize your images, open the page on your phone, or make your strongest project easier to find. · Nic
+                </p>
               </div>
-            ))}
-          </div>
+            </div>
+          </article>
         </div>
       </main>
       <SiteFooter />
+    </div>
+  );
+}
+
+function Block({ num, title, body }: { num: string; title: string; body: string }) {
+  return (
+    <div className="glass lift relative overflow-hidden rounded-3xl p-6 sm:p-8">
+      <div className="grad-flowerboy absolute inset-x-0 top-0 h-[2px] opacity-90" />
+      <p className="font-mono text-xs font-bold tracking-widest text-[oklch(0.5_0.1_60)]">{num}</p>
+      <h3 className="mt-3 font-display text-2xl font-bold leading-tight">{title}</h3>
+      <p className="mt-2 text-muted-foreground">{body}</p>
     </div>
   );
 }

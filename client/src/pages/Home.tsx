@@ -1,19 +1,24 @@
 /*
- * Sunlit Glass — Home / landing & onboarding
- * Asymmetric editorial layout: huge serif headline left, glass intake card
- * right. Below: how-it-works, sample grade card, recruiter testimonial,
- * pricing teaser. The form posts to /audit?url=...&role=...
+ * Sunlit Glass. Two-column introduction and intake, with account
+ * progress beside the form on desktop. Audit owns the actual review.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight, Sparkles, Globe, Smartphone, Eye, ShieldCheck } from "lucide-react";
+import { ArrowRight, Sparkles, Globe, Eye, Smartphone, ShieldCheck } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { RoleField } from "@/components/RoleField";
 import { GradePill } from "@/components/GradePill";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
-import { useUpgrade } from "@/lib/useUpgrade";
+import { isProUser } from "@/lib/quota";
+import { track } from "@/lib/track";
 import { toast } from "sonner";
+import { Link } from "wouter";
+import { SavedReports } from "@/components/SavedReports";
+import { FAQ } from "@/components/FAQ";
+import { MiniTierList } from "@/components/MiniTierList";
+import { SubmissionNotice } from "@/components/SubmissionNotice";
+import { PortfolioProgress } from "@/components/PortfolioProgress";
 
 const HERO_BG =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663468975365/JXRW8Prgas3RMo8cBvY8Y3/hero_gradient_bloom-HfQFaW3SyLJAbUW6xU4oJT.webp";
@@ -39,9 +44,22 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [role, setRole] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const { startUpgrade } = useUpgrade();
+  const [builder, setBuilder] = useState("");
+  const [builderOther, setBuilderOther] = useState("");
+  const submissionTrigger = useRef<HTMLButtonElement>(null);
+  const [submissionOpen, setSubmissionOpen] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  function startAudit(withRole: string, pro: boolean) {
+    const normalized = normalizeUrl(url);
+    if (!normalized) return;
+    const builtWith = builder === "__other" ? builderOther.trim() : builder;
+    track("audit_started", { role: withRole, pro, builder: builtWith || "unanswered" });
+    navigate(
+      `/audit?url=${encodeURIComponent(normalized)}&role=${encodeURIComponent(withRole)}${pro ? "&pro=1" : ""}${builtWith ? `&builder=${encodeURIComponent(builtWith)}` : ""}`,
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const normalized = normalizeUrl(url);
     if (!normalized) {
@@ -50,13 +68,20 @@ export default function Home() {
       });
       return;
     }
-    const params = new URLSearchParams({ url: normalized, role: role || "Creative" });
-    navigate(`/audit?${params.toString()}`);
+
+    const pro = isProUser();
+    // Role-specific grading is FREE (Nic, Jul 11): never paywall the pills.
+    // Conversion happens at the S-moment and after repeated audits, not the front door.
+
+    // Hand off to the audit page immediately. it runs the audit and owns the
+    // scanning screen with device previews and illustrated lessons.
+    startAudit(role || "Creative", pro);
   }
 
-  function handleUnlockPro() {
-    void startUpgrade();
-  }
+  // (weekly role-run gate lives in @/lib/quota. shared with the results page)
+
+  // UpgradeDialog owns availability; local payments remain disabled.
+  function handleUnlockPro() {}
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
@@ -83,52 +108,55 @@ export default function Home() {
       <SiteHeader onUpgrade={() => setUpgradeOpen(true)} />
 
       {/* HERO */}
-      <section className="container pt-12 sm:pt-20 lg:pt-28">
-        <div className="grid items-start gap-10 lg:grid-cols-12">
-          <div className="lg:col-span-7">
+      <main id="main-content" tabIndex={-1}><section className="container pt-12 sm:pt-16 lg:pt-20">
+        <div className="grid items-start gap-8 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-x-10">
+          <div className="lg:col-span-7 lg:col-start-1 lg:row-start-1">
             <div className="rise inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-[oklch(0.32_0.06_55)] backdrop-blur-md">
               <span className="h-1.5 w-1.5 rounded-full bg-[oklch(0.86_0.16_75)]" />
-              The portfolio audit recruiters wish you'd run
+              A clearer portfolio starts here
             </div>
             <h1 className="rise mt-6 font-display text-[2.6rem] font-bold leading-[1.02] tracking-[-0.03em] sm:text-6xl lg:text-[5rem]">
-              Your portfolio gets <span className="grad-text">five seconds.</span>
-              <br />
-              We tell you what they see.
+              Grade your <span className="grad-text">portfolio.</span>
             </h1>
             <p className="rise mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Paste your link. Tell us the work you want. FolioGrade audits the web and mobile experience, gives you a letter grade from <span className="font-semibold text-foreground">D to A+</span> (and an <span className="font-semibold text-foreground">S</span> for Pro perfection), and hands you the exact fixes that turn portfolio bounces into recruiter replies.
+              See what’s working. Know what to fix.
             </p>
-
+            <a href="#grade-form" className="mt-5 inline-flex min-h-12 items-center font-semibold underline underline-offset-4 lg:hidden">Get my grade ↓</a>
             <ul className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
-              <ValueRow icon={<Globe className="h-4 w-4" />} label="Web + mobile audited" />
-              <ValueRow icon={<Eye className="h-4 w-4" />} label="Recruiter-grade insights" />
-              <ValueRow icon={<Smartphone className="h-4 w-4" />} label="Instant letter grade" />
+              <ValueRow icon={<Globe className="h-4 w-4" />} label="Web + mobile previews" />
+              <ValueRow icon={<Eye className="h-4 w-4" />} label="Role-specific guidance" />
+              <ValueRow icon={<Smartphone className="h-4 w-4" />} label="An initial letter grade" />
               <ValueRow icon={<ShieldCheck className="h-4 w-4" />} label="No login. No spam." />
             </ul>
+            <p className="rise mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Your portfolio should work wherever someone opens it. Check the phone preview for cramped text, cropped work, and buttons that are hard to tap.
+            </p>
+            <MiniTierList className="mt-5 max-w-xl" />
           </div>
 
           {/* Intake card */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2">
             <form
+              id="grade-form"
               onSubmit={handleSubmit}
-              className="glass-strong rise relative overflow-hidden rounded-[2rem] p-6 sm:p-7"
+              className="glass-strong rise scroll-mt-40 relative overflow-hidden rounded-[2rem] p-6 sm:p-7"
               style={{ animationDelay: "120ms" }}
             >
               <div
                 aria-hidden
                 className="grad-flowerboy pointer-events-none absolute inset-x-6 top-0 h-[2px] rounded-full opacity-90"
               />
-              <p className="font-display text-2xl font-bold">Run a free audit</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Takes about 30 seconds. Nothing to install.
-              </p>
+              <h2 className="sr-only">Your portfolio details</h2>
 
-              <label className="mt-6 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <label htmlFor="portfolio-url" className="block text-sm font-semibold text-foreground">
                 Portfolio URL
               </label>
               <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[oklch(0.22_0.02_60_/_0.12)] bg-white/70 px-4 py-3 focus-within:border-[oklch(0.78_0.16_70_/_0.6)] focus-within:ring-4 focus-within:ring-[oklch(0.86_0.16_75_/_0.18)]">
                 <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <input
+                  id="portfolio-url"
+                  required
+                  maxLength={2048}
                   type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
@@ -139,29 +167,81 @@ export default function Home() {
                 />
               </div>
 
-              <label className="mt-5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                What do you want to be hired for?
-              </label>
-              <div className="mt-2">
-                <RoleField value={role} onChange={setRole} />
+              <fieldset className="mt-5 min-w-0">
+                <legend className="text-sm font-semibold text-foreground">
+                  What do you want to be hired for?
+                </legend>
+                <RoleField
+                  className="mt-2"
+                  value={role}
+                  onChange={(r) => {
+                    setRole(r);
+                    track("role_pill_selected", { role: r });
+                  }}
+                />
+              </fieldset>
+
+              {/* Optional analytics question. where the portfolio was built */}
+              <div className="mt-5">
+                <label htmlFor="portfolio-builder" className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+                  Where did you build it? <span className="rounded-full border border-foreground/15 bg-white/70 px-2.5 py-1 text-xs font-semibold normal-case tracking-normal text-muted-foreground">Optional</span>
+                </label>
+                
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    id="portfolio-builder"
+                    value={builder}
+                    onChange={(e) => {
+                      setBuilder(e.target.value);
+                      if (e.target.value !== "__other") setBuilderOther("");
+                      track("builder_selected", { builder: e.target.value });
+                    }}
+                    className="min-h-12 w-full appearance-none rounded-xl border-0 bg-transparent px-1 py-3 pr-7 text-base outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c5147' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center" }}
+                  >
+                    <option value="">Skip / Not sure</option>
+                    <option>Framer</option>
+                    <option>Squarespace</option>
+                    <option>Wix</option>
+                    <option>Canva</option>
+                    <option>Webflow</option>
+                    <option>Cargo</option>
+                    <option>WordPress</option>
+                    <option>Adobe Portfolio</option>
+                    <option>Manus</option>
+                    <option>Claude / AI builder</option>
+                    <option>Coded it myself</option>
+                    <option value="__other">Other…</option>
+                  </select>
+                  {builder === "__other" ? (
+                    <input
+                      aria-label="Other portfolio builder"
+                      value={builderOther}
+                      onChange={(e) => setBuilderOther(e.target.value)}
+                      placeholder="Which builder did you use?"
+                      maxLength={40}
+                      className="min-h-12 w-full min-w-0 rounded-xl border border-amber-900/35 bg-white px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-amber-700"
+                    />
+                  ) : null}
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="group mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[oklch(0.18_0.04_50)] px-5 py-3.5 text-sm font-bold text-[oklch(0.97_0.04_85)] transition hover:scale-[1.01]"
-                style={{
-                  boxShadow:
-                    "inset 0 1px 0 oklch(1 0 0 / 0.18), 0 18px 40px -20px oklch(0.18 0.04 50 / 0.55)",
-                }}
+                className="pg-action pg-action-primary group mt-6 w-full"
               >
                 Grade my portfolio
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
-              <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                Free forever. Pro unlocks the S-tier and the deep drill-downs.
-              </p>
+              <nav aria-label="Submission information" className="mt-3 flex flex-wrap items-center justify-center gap-x-4 text-sm text-muted-foreground">
+                <button ref={submissionTrigger} type="button" onClick={() => setSubmissionOpen(true)} aria-haspopup="dialog" className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">How we use submissions</button>
+                <Link href="/privacy" className="inline-flex min-h-11 items-center underline underline-offset-4">Privacy</Link>
+                <Link href="/terms" className="inline-flex min-h-11 items-center underline underline-offset-4">Terms</Link>
+              </nav>
             </form>
+            <div className="mt-5"><SavedReports compact /></div>
           </div>
+          <PortfolioProgress className="lg:col-span-7 lg:col-start-1 lg:row-start-2" />
         </div>
       </section>
 
@@ -170,13 +250,13 @@ export default function Home() {
         <div className="grid items-center gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
-              The grade is the headline
+              Your report
             </p>
             <h2 className="mt-3 font-display text-4xl font-bold leading-tight sm:text-5xl">
-              A letter you can <span className="grad-text">act on.</span>
+              The good. The gaps. <span className="grad-text">The next move.</span>
             </h2>
             <p className="mt-4 max-w-md text-muted-foreground">
-              Every audit returns a single overall grade, plus a grade per category. No confusing 0–100 score, no vanity gauges. If a recruiter would think it's an A, we tell you it's an A.
+              See your grade. Open a category. Pick your next fix.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <GradePill grade="S" size="sm" label="Pro tier" />
@@ -196,13 +276,10 @@ export default function Home() {
               <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Sample audit · maya-osei.studio
+                    Example report
                   </p>
                   <p className="mt-2 font-display text-2xl font-bold leading-tight">
-                    Strong, but losing recruiters on mobile.
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Hero loads in 4.2s on 4G — half of visitors bounce.
+                    Strong work. Give the phone layout another look.
                   </p>
                 </div>
                 <GradePill grade="B+" size="lg" />
@@ -210,7 +287,7 @@ export default function Home() {
               <div className="mt-7 grid gap-3 sm:grid-cols-3">
                 <Mini grade="A" label="Visual craft" />
                 <Mini grade="A-" label="Story" />
-                <Mini grade="C" label="Mobile perf" />
+                <Mini grade="C" label="Phone experience" />
               </div>
             </div>
           </div>
@@ -242,17 +319,17 @@ export default function Home() {
           <Step
             num="01"
             title="Drop your link"
-            body="Paste any portfolio URL — Cargo, Webflow, Framer, Squarespace, custom. We read the public site only."
+            body="Your public portfolio. Any platform."
           />
           <Step
             num="02"
             title="Tell us the role"
-            body="Graphic design, marketing, photography, creative tech, artist — we weight the audit to that field's hiring norms."
+            body="Choose your field, or pick Other."
           />
           <Step
             num="03"
             title="Get your letter grade"
-            body="Overall grade, category grades, top fixes ranked by impact, and a bounce-rate forecast you can take to your designer."
+            body="See what’s working and what to fix next."
           />
         </div>
       </section>
@@ -271,51 +348,45 @@ export default function Home() {
           <div className="relative grid items-center gap-8 lg:grid-cols-12">
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[oklch(0.32_0.06_55)]">
-                <Sparkles className="h-3 w-3" /> FolioGrade Pro
+                <Sparkles className="h-3 w-3" /> portfolio graded pro
               </div>
               <h2 className="mt-4 font-display text-4xl font-bold leading-tight sm:text-5xl">
-                Free is great. <span className="grad-text">Pro is the interview.</span>
+                Want a <span className="grad-text">closer look?</span>
               </h2>
               <p className="mt-4 max-w-xl text-muted-foreground">
-                Pro unlocks the three premium categories that recruiters quietly weigh hardest — accessibility, discoverability, conversion path — plus the S-tier ceiling and a recruiter-ready PDF export.
+                Deeper project reviews and personal standout feedback are coming to Pro.
               </p>
             </div>
             <div className="lg:col-span-5">
               <button
                 type="button"
                 onClick={() => setUpgradeOpen(true)}
-                className="foil inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold text-[oklch(0.2_0.04_50)] shadow-[inset_0_1px_0_oklch(1_0_0_/_0.85),0_18px_36px_-18px_oklch(0.7_0.16_65_/_0.6)]"
+                className="pg-action w-full"
               >
                 <Sparkles className="h-4 w-4" />
-                See what Pro unlocks
+                About Pro
               </button>
               <p className="mt-3 text-center text-xs text-muted-foreground">
-                $12 / mo · cancel anytime · demo paywall
+                $9.99/month or $49.99/year planned. Payments aren’t open yet.
               </p>
             </div>
           </div>
         </div>
       </section>
 
+      <FAQ />
+      </main>
       <SiteFooter />
 
+      <SubmissionNotice open={submissionOpen} onOpenChange={setSubmissionOpen} returnFocusRef={submissionTrigger} />
       <UpgradeDialog
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
         onConfirm={handleUnlockPro}
       />
-    </div>
-  );
-}
 
-function ValueRow({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <li className="flex items-center gap-3 rounded-2xl bg-white/55 px-4 py-3 backdrop-blur-md">
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-[oklch(0.86_0.16_75_/_0.2)] text-[oklch(0.4_0.08_55)]">
-        {icon}
-      </span>
-      <span className="text-sm font-semibold">{label}</span>
-    </li>
+
+    </div>
   );
 }
 
@@ -341,3 +412,15 @@ function Mini({ grade, label }: { grade: import("@/lib/audit").GradeLetter; labe
     </div>
   );
 }
+
+function ValueRow({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <li className="flex items-center gap-3 rounded-2xl bg-white/55 px-4 py-3 backdrop-blur-md">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-[oklch(0.86_0.16_75_/_0.2)] text-[oklch(0.4_0.08_55)]">
+        {icon}
+      </span>
+      <span className="text-sm font-semibold">{label}</span>
+    </li>
+  );
+}
+
