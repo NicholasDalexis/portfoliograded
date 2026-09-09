@@ -15,7 +15,12 @@ export async function collectRenderedReview(url: string, dependencies: Partial<D
     try {
       const captured = await deps.capture(url, device);
       review.devices[device] = { status: "captured", capture: captured.capture, observations: captured.observations, ...(!captured.observations ? { reason: "measurement_failed" as const } : {}) };
-    } catch (error) { review.devices[device] = unavailable(error instanceof Error && error.message === "busy" ? "busy" : "capture_failed"); }
+    } catch (error) {
+      if (process.env.PG_NETLIFY_CAPTURE === "true" && error instanceof Error) {
+        // Stack locations identify runtime failures without logging URLs, page text or credentials.
+        console.warn("[capture] unavailable", device, error.name, error.stack?.split("\n").slice(1, 4).join("\n"));
+      }
+      review.devices[device] = unavailable(error instanceof Error && error.message === "busy" ? "busy" : "capture_failed"); }
   }
   const measured = Object.values(review.devices).filter(device => device.observations).length;
   const captured = Object.values(review.devices).filter(device => device.capture).length;

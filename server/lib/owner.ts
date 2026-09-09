@@ -1,3 +1,4 @@
+import { netlifyRequest } from "./netlifyRequest.js";
 import { createHash, randomBytes } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import type { AuthedRequest } from "./firebaseAdmin.js";
@@ -27,7 +28,7 @@ export function identifyOwner(req: Request, res: Response, next: NextFunction): 
 }
 export function requireSameOrigin(req: Request, res: Response, next: NextFunction): void {
   const origin = req.headers.origin;
-  const expected = process.env.APP_URL ? new URL(process.env.APP_URL).origin : `${req.protocol}://${req.get("host")}`;
+  const expected = netlifyRequest.getStore()?.origin ?? (process.env.APP_URL ? new URL(process.env.APP_URL).origin : `${req.protocol}://${req.get("host")}`);
   if (req.headers["sec-fetch-site"] === "cross-site" || (origin && origin !== expected)) { res.status(403).json({ error: "cross_site_request" }); return; }
   next();
 }

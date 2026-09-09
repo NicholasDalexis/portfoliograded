@@ -1,3 +1,4 @@
+vi.mock("@server/lib/shotArchive.js", () => ({ getPortableArchivedShot: mocks.archive }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import type { Server } from "node:http";

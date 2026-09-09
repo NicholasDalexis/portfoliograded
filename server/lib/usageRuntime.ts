@@ -1,3 +1,4 @@
+import { withStore } from "./withStore.js";
 import { randomUUID } from "node:crypto";
 import { db } from "./firebaseAdmin.js";
 import { isAdminUid } from "./billingConfig.js";
@@ -109,7 +110,7 @@ export async function usageStatus() {
   const activation = productionUsageActivation();
   const active = await readyLedger();
   return { enabled: Boolean(activation), activation: activation ?? null, transportConfigured: Boolean(slackMilestoneSender()),
-    pendingHandoffs: Object.keys(secureStore.read().usageAttempts ?? {}).length, lastFlushAt: lastFlushAt ?? null, lastError: lastError ?? null,
+    pendingHandoffs: await withStore(() => Object.keys(secureStore.read().usageAttempts ?? {}).length), lastFlushAt: lastFlushAt ?? null, lastError: lastError ?? null,
     state: active ? await active.state() : null,
     boundary: "Local preview report storage needs one writer and a persistent volume. Firestore metering uses transactions; delivery is unverified until a transport smoke test and deployment." };
 }

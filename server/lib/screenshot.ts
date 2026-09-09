@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { measureRenderedPage } from "./renderedMetrics.js";
-import { archiveShot } from "./shotArchive.js";
+import { archivePortableShot } from "./shotArchive.js";
 import type { RenderedCapture, RenderedObservations } from "../../shared/renderedEvidence.js";
 import { recordBrowserUsage } from "./usageTracking.js";
 export { getArchivedShot } from "./shotArchive.js";
@@ -52,7 +52,7 @@ let inFlight = 0;
 const MAX_CONCURRENT = 2;
 
 export function chromeAvailable(): boolean {
-  return CHROME_PATHS.some((p) => existsSync(p));
+  return process.env.PG_NETLIFY_CAPTURE === "true" || CHROME_PATHS.some((p) => existsSync(p));
 }
 
 export function browserEnvironment(source: NodeJS.ProcessEnv = process.env): Record<string, string> {
@@ -62,7 +62,8 @@ export function browserEnvironment(source: NodeJS.ProcessEnv = process.env): Rec
 
 async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    const executablePath = CHROME_PATHS.find((p) => existsSync(p));
+    const lambda = process.env.PG_NETLIFY_CAPTURE === "true" ? (await import("@sparticuz/chromium")).default : undefined;
+    const executablePath = lambda ? await lambda.executablePath() : CHROME_PATHS.find((p) => existsSync(p));
     if (!executablePath) throw new Error("no_chrome");
     browserPromise = (async () => {
     const proxyPort = await browserProxyPort();
@@ -71,8 +72,8 @@ async function getBrowser(): Promise<Browser> {
       headless: true,
       timeout: 12_000,
       protocolTimeout: 30_000,
-      env: browserEnvironment(),
-      args: ["--disable-gpu", "--hide-scrollbars", "--mute-audio", "--disable-quic", "--disable-background-networking", "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp", `--proxy-server=http://127.0.0.1:${proxyPort}`, "--proxy-bypass-list=<-loopback>"],
+      env: { ...browserEnvironment(), ...(lambda ? { LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH || "/tmp/al2023/lib", FONTCONFIG_PATH: process.env.FONTCONFIG_PATH || "/tmp/fonts" } : {}) },
+      args: [...(lambda ? lambda.args.filter(arg => !arg.startsWith("--proxy") && !arg.startsWith("--host-resolver") && !arg.includes("disable-web-security") && !arg.includes("allow-running-insecure-content") && arg !== "--single-process") : []), "--disable-gpu", "--hide-scrollbars", "--mute-audio", "--disable-quic", "--disable-background-networking", "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp", `--proxy-server=http://127.0.0.1:${proxyPort}`, "--proxy-bypass-list=<-loopback>"],
     });
     })();
     browserPromise.then((b) => b.on("disconnected", () => (browserPromise = null))).catch(() => (browserPromise = null));
@@ -139,7 +140,7 @@ export async function captureAndStore(
       const buf = Buffer.from(await page.screenshot({ type: "jpeg", quality: 72 }));
       const capturedAt = new Date().toISOString();
       const imageSha256 = createHash("sha256").update(buf).digest("hex");
-      const imageRef = archiveShot(buf);
+      const imageRef = await archivePortableShot(buf);
       let changed = false, hadPrevious = false;
       try {
         mkdirSync(SHOT_DIR, { recursive: true, mode: 0o700 });

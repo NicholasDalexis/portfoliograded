@@ -314,7 +314,7 @@ export default function Audit() {
       try {
         const headers = await getAuthHeader();
         if (controller.signal.aborted) return;
-        const response = readId
+        let response = readId
           ? await fetch(`/api/audits/${encodeURIComponent(readId)}`, {
               headers,
               signal: controller.signal,
@@ -329,6 +329,27 @@ export default function Audit() {
               }),
               signal: controller.signal,
             });
+        if (response.status === 202 && !readId) {
+          const queued = await response.json() as { jobId?: string };
+          if (!queued.jobId || !/^[a-f0-9]{48}$/.test(queued.jobId)) throw new Error("The scan could not start. Please try again.");
+          const deadline = Date.now() + 8 * 60_000;
+          while (Date.now() < deadline) {
+            await new Promise<void>((resolve,reject) => {
+              const abort = () => { clearTimeout(timer); reject(new DOMException("Aborted","AbortError")); };
+              const timer = setTimeout(() => { controller.signal.removeEventListener("abort",abort); resolve(); },3000);
+              if (controller.signal.aborted) abort();
+              else controller.signal.addEventListener("abort",abort,{once:true});
+            });
+            response = await fetch(`/api/audits/jobs/${queued.jobId}`,{headers,signal:controller.signal});
+            if (response.status === 202) continue;
+            if (!response.ok) break;
+            const completed = await response.json() as { reportId?: string };
+            if (!completed.reportId || !/^[A-Za-z0-9_-]{24}$/.test(completed.reportId)) throw new Error("The report could not be opened. Check your saved reports.");
+            response = await fetch(`/api/audits/${completed.reportId}`,{headers,signal:controller.signal});
+            break;
+          }
+          if (response.status === 202) throw new Error("This scan is taking longer than expected. Check your saved reports shortly.");
+        }
         if (!response.ok) {
           const data = (await response.json().catch(() => ({}))) as {
             reason?: string;

@@ -14,7 +14,6 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const KEY_PATH =
   process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
   path.resolve(process.cwd(), "firebase-service-account.json");

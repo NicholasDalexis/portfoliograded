@@ -1,9 +1,10 @@
+import { netlifyRequest } from "./netlifyRequest.js";
 import { RELEASE_VERSION } from "../../shared/release.js";
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { requireLocalRuntimeRequest, resolveRuntime, type RuntimeContext } from "./runtimeContext.js";
 
-const secret = randomBytes(32);
+const secret = process.env.PREVIEW_COOKIE_SECRET || randomBytes(32);
 const expiresIn = 7 * 86400_000;
 const hits = new Map<string, number[]>();
 let passwordChecks = 0;
@@ -28,13 +29,14 @@ export function installPreviewGate(app: Express, runtime: RuntimeContext = resol
     app.use(requireLocalRuntimeRequest(runtime));
     return;
   }
+  if (process.env.PG_STORAGE === "netlify-db" && !/^[a-f0-9]{64}$/.test(process.env.PREVIEW_COOKIE_SECRET ?? "")) throw new Error("preview_cookie_secret_required");
   const configured = process.env.PREVIEW_PASSWORD_HASH;
   const [salt, expected] = (configured ?? "").split(":");
   app.use((_req, res, next) => { res.setHeader("X-Robots-Tag", "noindex, nofollow"); res.setHeader("Cache-Control", "private, no-store"); next(); });
   app.post("/preview/login", express.urlencoded({ extended: false, limit: "2kb" }), async (req, res) => {
     if (!/^[a-f0-9]{32}$/.test(salt ?? "") || !/^[a-f0-9]{128}$/.test(expected ?? "")) { res.status(503).send("Private preview is being configured."); return; }
     const origin = req.headers.origin;
-    const expectedOrigin = process.env.APP_URL ? new URL(process.env.APP_URL).origin : `${req.protocol}://${req.get("host")}`;
+    const expectedOrigin = netlifyRequest.getStore()?.origin ?? (process.env.APP_URL ? new URL(process.env.APP_URL).origin : `${req.protocol}://${req.get("host")}`);
     if (req.headers["sec-fetch-site"] === "cross-site" || (origin && origin !== expectedOrigin)) { res.status(403).send("Open the preview directly to sign in."); return; }
     const now = Date.now(), ip = req.ip ?? "unknown";
     for (const [key, times] of hits) if (!times.some(t => now - t < 600_000)) hits.delete(key);

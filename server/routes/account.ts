@@ -1,3 +1,4 @@
+import { withStore } from "../lib/withStore.js";
 import { Router } from "express";
 import { AccountPreferencesSchema, MARKETING_SCOPE, MarketingPreferenceInput } from "../../shared/accountPreferences.js";
 import { requireAuth, type AuthedRequest } from "../lib/firebaseAdmin.js";
@@ -14,11 +15,11 @@ export function createAccountRouter(store: AccountPreferenceStore = accountPrefe
       revision: record?.revision ?? 0, updatedAt: record?.updatedAt ?? null,
       scope: MARKETING_SCOPE, emailVerified: user.emailVerified === true, sendingEnabled: false });
   };
-  router.get("/preferences", requireAuth, (req, res) => {
-    try { res.json(response((req as AuthedRequest).user!)); }
+  router.get("/preferences", requireAuth, async (req, res) => {
+    try { res.json(await withStore(() => response((req as AuthedRequest).user!))); }
     catch { res.status(503).json({ error: "storage_unavailable", reason: "Your email preference could not be loaded. Please try again." }); }
   });
-  router.put("/preferences", requireSameOrigin, requireAuth, (req, res) => {
+  router.put("/preferences", requireSameOrigin, requireAuth, async (req, res) => {
     const input = MarketingPreferenceInput.safeParse(req.body);
     if (!input.success) { res.status(400).json({ error: "validation_failed" }); return; }
     const user = (req as AuthedRequest).user!;
@@ -34,8 +35,11 @@ export function createAccountRouter(store: AccountPreferenceStore = accountPrefe
       changes.set(user.uid, { ...current, count: current.count + 1 });
     }
     try {
-      store.set(user.uid, input.data.marketingEmails, input.data.expectedRevision, user.emailVerified ? user.email : undefined);
-      res.json(response(user));
+      const saved = await withStore(() => {
+        store.set(user.uid, input.data.marketingEmails, input.data.expectedRevision, user.emailVerified ? user.email : undefined);
+        return response(user);
+      }, true);
+      res.json(saved);
     } catch (error) {
       if (error instanceof PreferenceConflict) { res.status(409).json({ error: "preference_conflict", reason: "Your preference changed in another session. Reload it before saving." }); return; }
       res.status(503).json({ error: "storage_unavailable", reason: "Your preference was not saved. Please try again." });

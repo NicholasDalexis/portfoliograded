@@ -5,6 +5,9 @@
 !README.md
 !Dockerfile
 !railway.json
+!netlify.toml
+!netlify/
+!netlify/**
 !package.json
 !package-lock.json
 !components.json
@@ -46,3 +49,6 @@
 **/*.zip
 **/*.sqlite*
 **/*.db
+
+# Local Netlify folder
+.netlify

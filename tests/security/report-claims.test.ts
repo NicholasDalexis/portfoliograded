@@ -1,3 +1,4 @@
+vi.mock("@server/lib/shotArchive.js", () => ({ getPortableArchivedShot: fixture.archive }));
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import { createHash } from "node:crypto";

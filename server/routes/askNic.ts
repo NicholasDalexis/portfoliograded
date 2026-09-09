@@ -1,3 +1,4 @@
+import { withStore } from "../lib/withStore.js";
 /*
  * Ask Nic — founder-led chatbot. Clearly a bot, answers in Nic's voice with
  * his real background, scoped to portfolios + the job hunt only.
@@ -15,8 +16,6 @@ import { optionalAuth, isFreeFeedbackAccount } from "../lib/firebaseAdmin.js";
 import { isEntitled } from "../lib/entitlements.js";
 import { identifyOwner, requireSameOrigin, type OwnedRequest } from "../lib/owner.js";
 import { positiveLimit, takeBudget } from "../lib/quotaBudget.js";
-
-
 const SYSTEM = `You are "Ask Nic", the built-in advice bot on portfolio graded (portfoliograded.com). You speak AS Nic — Nicholas Alexis — but you are open about being an AI using provided notes about his advice, never pretend to be the human Nic live-typing.
 
 WHO NIC IS (real, use it):
@@ -59,66 +58,77 @@ ECOSYSTEM (plug naturally, never salesy, MAX once per conversation, and only whe
 - They want ongoing help/more advice → "the free newsletter at jobhuntrecipe.com is the whole system."
 
 Never invent facts about Nic's life beyond what's here. If you don't know, say so. Do not quote current tool prices, free-plan details or job-market statistics without verification; these notes may be dated. Never invent percentages, download-time estimates, compression savings, or claims that most recruiters use phones. Explain the dependency qualitatively and suggest measuring the user's real page. Keep replies under 80 words unless depth was requested. The public navigation is Grading, How to and Find Jobs, which opens StillUnemployed in a new tab. The builder is a retained private prototype, deferred to Version 2 targeting early April2027; do not direct grader visitors to it or promise hosting. October2026 targets a grader-only launch. For newly assessed reports, all initial letters remain visible. D-detail feedback asks for a verified free Google account, with no payment or marketing opt-in. B feedback stays open. The separate S row means personal standout strengths supported by the available evidence, not an exceptional earned score or a guarantee. Its actual identities and explanations are available only through a future authorized Pro experience; payments are off. Historical reports retain their saved access policy. Planned Pro is $9.99/month or $49.99/year, billed upfront annually, about $4.17/month equivalent and 58% less than twelve monthly payments. Payments remain off. My reports at /reports lists the current account or browser's saved reviews without a fresh scan. Its explicit quick check compares complete bounded homepage HTML bytes for desktop/mobile, not CSS, images or the whole site's appearance. New reviews save immutable report screenshots and bounded Chromium layout observations of opening-view overflow, control sizes, simple text contrast, headings and contact candidates. These measurements do not change the HTML numerical grade, judge aesthetics, test full interactions or measure visitor performance. A missing browser check is unavailable, never a pass. Account switching cannot reveal another owner's reports. A creator can save the selected browser-created report to their verified Google account through the free-feedback sign-in flow. This requires the original browser cookie, transfers that report and associated checklist atomically, and never starts a new grade. Other guest reports are not imported automatically. A new review may reuse a prior accepted result only when bounded homepage source, screenshots and browser observations plus role and method match. Failed capture preserves the prior result. Dates and actual numerical grades stay honest; personal best is separate. The public hosted preview may still be an earlier version. How-to at /how-to teaches tier cards, preview inspection, fix checklists, text highlighting and Ask Nic. Do not imply that an AI model has been fine-tuned on Nic's data; these are provided advice notes.`;
-
 export function createAskNicRouter(deps = { isEntitled, llmConfigured, invokeClaudeText }) {
-const askNicRouter = Router();
-// POST /api/ask-nic  { question: string, history?: {role, content}[], pro?: boolean }
-askNicRouter.post("/", requireSameOrigin, optionalAuth, identifyOwner, async (req, res) => {
-  if (!deps.llmConfigured()) {
-    res.status(501).json({ error: "unavailable", reason: "Ask Nic isn't wired up on this deployment yet." });
-    return;
-  }
-  const { question, history } = req.body as {
-    question?: unknown;
-    history?: { role: string; content: string }[];
-  };
-  if (typeof question !== "string" || !question.trim() || question.length > 600) {
-    res.status(400).json({ error: "validation_failed", reason: "Ask a real question (under 600 characters)." });
-    return;
-  }
-
-  const owner = req as OwnedRequest;
-  const isPro = await deps.isEntitled(owner.user?.uid);
-  let quota: ReturnType<typeof takeBudget>;
-  try {
-    quota = takeBudget({ scope: "chat", ownerId: owner.ownerId, ip: req.ip || req.socket.remoteAddress || "unknown",
-      ownerLimit: isPro ? 15 : 2, ipLimit: isPro ? 30 : 10, globalLimit: positiveLimit(process.env.ASK_NIC_DAILY_BUDGET, 200) });
-  } catch { res.status(503).json({ error: "quota_unavailable", reason: "Ask Nic is temporarily unavailable." }); return; }
-  if (!quota.ok) {
-    res.status(429).json({ error: quota.reason, reason: quota.reason === "global_budget" ? "Ask Nic has reached today's sitewide allowance. Try tomorrow." : "You've used today's questions. Try tomorrow." });
-    return;
-  }
-
-  const cleanHistory = (Array.isArray(history) ? history : [])
-    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-6)
-    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 800) }));
-
-  let attempt: TrackedAttempt | undefined;
-  let answer: string | null = null;
-  try {
-    attempt = await beginUsageAttempt(owner.user?.uid, "ask-nic-v1", isFreeFeedbackAccount(owner.user));
-    const trace = attempt?.trace ?? emptyTrace();
-    // Questions/history are untrusted user text. No full private report is loaded
-    // here, and extra client-supplied report/category/entitlement fields are ignored.
-    answer = await withUsageTracking(trace, () => deps.invokeClaudeText({
-      system: SYSTEM, messages: [...cleanHistory, { role: "user", content: question.trim() }], maxTokens: 250,
-    }), captured => checkpointUsageAttempt(attempt, captured));
-    finishUsageAttempt(attempt, answer ? "helper" : "failed");
-  } catch {
-    if (attempt) try { finishUsageAttempt(attempt, "failed"); } catch { /* Persisted trace will recover on restart. */ }
-    res.status(503).json({ error: "chat_unavailable", reason: "Ask Nic could not complete this question. Try again later." }); return;
-  } finally { if (attempt) void flushUsage(); }
-
-  if (!answer) {
-    res.status(502).json({ error: "chat_failed", reason: "Ask Nic glitched. Try again in a minute." });
-    return;
-  }
-  // Nic's voice rule: no em dashes, ever. Models slip; we don't.
-  const clean = answer.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, ", ");
-  res.json({ answer: clean, questionsLeft: quota.left });
-});
-
-return askNicRouter;
+    const askNicRouter = Router();
+    // POST /api/ask-nic  { question: string, history?: {role, content}[], pro?: boolean }
+    askNicRouter.post("/", requireSameOrigin, optionalAuth, identifyOwner, async (req, res) => {
+        if (!deps.llmConfigured()) {
+            res.status(501).json({ error: "unavailable", reason: "Ask Nic isn't wired up on this deployment yet." });
+            return;
+        }
+        const { question, history } = req.body as {
+            question?: unknown;
+            history?: {
+                role: string;
+                content: string;
+            }[];
+        };
+        if (typeof question !== "string" || !question.trim() || question.length > 600) {
+            res.status(400).json({ error: "validation_failed", reason: "Ask a real question (under 600 characters)." });
+            return;
+        }
+        const owner = req as OwnedRequest;
+        const isPro = await deps.isEntitled(owner.user?.uid);
+        let quota: ReturnType<typeof takeBudget>;
+        try {
+            quota = await withStore(() => takeBudget({ scope: "chat", ownerId: owner.ownerId, ip: req.ip || req.socket.remoteAddress || "unknown",
+                ownerLimit: isPro ? 15 : 2, ipLimit: isPro ? 30 : 10, globalLimit: positiveLimit(process.env.ASK_NIC_DAILY_BUDGET, 200) }), true);
+        }
+        catch {
+            res.status(503).json({ error: "quota_unavailable", reason: "Ask Nic is temporarily unavailable." });
+            return;
+        }
+        if (!quota.ok) {
+            res.status(429).json({ error: quota.reason, reason: quota.reason === "global_budget" ? "Ask Nic has reached today's sitewide allowance. Try tomorrow." : "You've used today's questions. Try tomorrow." });
+            return;
+        }
+        const cleanHistory = (Array.isArray(history) ? history : [])
+            .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+            .slice(-6)
+            .map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 800) }));
+        let attempt: TrackedAttempt | undefined;
+        let answer: string | null = null;
+        try {
+            attempt = await beginUsageAttempt(owner.user?.uid, "ask-nic-v1", isFreeFeedbackAccount(owner.user));
+            const trace = attempt?.trace ?? emptyTrace();
+            // Questions/history are untrusted user text. No full private report is loaded
+            // here, and extra client-supplied report/category/entitlement fields are ignored.
+            answer = await withUsageTracking(trace, () => deps.invokeClaudeText({
+                system: SYSTEM, messages: [...cleanHistory, { role: "user", content: question.trim() }], maxTokens: 250,
+            }), captured => checkpointUsageAttempt(attempt, captured));
+            finishUsageAttempt(attempt, answer ? "helper" : "failed");
+        }
+        catch {
+            if (attempt)
+                try {
+                    finishUsageAttempt(attempt, "failed");
+                }
+                catch { /* Persisted trace will recover on restart. */ }
+            res.status(503).json({ error: "chat_unavailable", reason: "Ask Nic could not complete this question. Try again later." });
+            return;
+        }
+        finally {
+            if (attempt)
+                void flushUsage();
+        }
+        if (!answer) {
+            res.status(502).json({ error: "chat_failed", reason: "Ask Nic glitched. Try again in a minute." });
+            return;
+        }
+        // Nic's voice rule: no em dashes, ever. Models slip; we don't.
+        const clean = answer.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, ", ");
+        res.json({ answer: clean, questionsLeft: quota.left });
+    });
+    return askNicRouter;
 }
 export const askNicRouter = createAskNicRouter();

@@ -1,3 +1,5 @@
+import { getStore } from "@netlify/blobs";
+import { usesNetlifyDatabase } from "./storeContext.js";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -34,4 +36,26 @@ export function getArchivedShot(ref: string): Buffer | null {
     const buf = readFileSync(target);
     return `${createHash("sha256").update(buf).digest("hex")}.jpg` === ref ? buf : null;
   } catch { return null; }
+}
+
+/** Netlify objects are private; only the owner-authorized report route reads them. */
+function netlifyShots() {
+  const namespace = process.env.PG_BLOB_NAMESPACE;
+  if (!namespace || !/^[a-z0-9-]{1,40}$/.test(namespace)) throw new Error("shot_namespace_required");
+  return getStore({name:`portfolio-shots-${namespace}`,consistency:"strong"});
+}
+export async function archivePortableShot(buf: Buffer): Promise<string | undefined> {
+  if (!usesNetlifyDatabase()) return archiveShot(buf);
+  if (!buf.length || buf.length > MAX_IMAGE_BYTES) return undefined;
+  const ref = `${createHash("sha256").update(buf).digest("hex")}.jpg`;
+  await netlifyShots().set(ref,new Uint8Array(buf),{metadata:{contentType:"image/jpeg",createdAt:new Date().toISOString()}});
+  return ref;
+}
+export async function getPortableArchivedShot(ref: string): Promise<Buffer | null> {
+  if (!usesNetlifyDatabase()) return getArchivedShot(ref);
+  if (!REF.test(ref)) return null;
+  const data = await netlifyShots().get(ref,{type:"arrayBuffer"});
+  if (!data || !data.byteLength || data.byteLength > MAX_IMAGE_BYTES) return null;
+  const buf = Buffer.from(data);
+  return `${createHash("sha256").update(buf).digest("hex")}.jpg` === ref ? buf : null;
 }

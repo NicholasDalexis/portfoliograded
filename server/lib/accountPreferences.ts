@@ -4,6 +4,8 @@ import path from "node:path";
 import { z } from "zod";
 import { MARKETING_SCOPE, MARKETING_CONSENT_TEXT } from "../../shared/accountPreferences.js";
 
+import { currentStoreScope } from "./storeContext.js";
+
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_ACCOUNTS = 10_000;
 const RecordSchema = z.object({
@@ -27,6 +29,8 @@ export class AccountPreferenceStore {
     return createHash("sha256").update(uid).digest("hex");
   }
   private read() {
+    const scope = currentStoreScope();
+    if (scope) return DocumentSchema.parse(scope.document.accountPreferences ?? { version: 1, accounts: {} });
     if (!this.state) {
       if (!existsSync(this.file)) this.state = { version: 1, accounts: {} };
       else {
@@ -63,6 +67,12 @@ export class AccountPreferenceStore {
     draft.accounts[key] = record;
     const serialized = JSON.stringify(draft);
     if (Buffer.byteLength(serialized, "utf8") > MAX_BYTES) throw new Error("Preference storage is full");
+    const scope = currentStoreScope();
+    if (scope) {
+      if (!scope.writable) throw new Error("read_only_storage_operation");
+      scope.document.accountPreferences = draft; scope.changed = true;
+      return structuredClone(record);
+    }
     mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
     const temp = `${this.file}.${randomBytes(8).toString("hex")}.tmp`;
     try {

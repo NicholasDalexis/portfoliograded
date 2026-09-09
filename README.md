@@ -1,42 +1,65 @@
 # Portfolio Graded
 
-Portfolio Graded reviews a portfolio homepage and presents understandable letter grades, category feedback, and desktop and phone evidence where available. This publication snapshot is version **1.1.9**. The portfolio builder remains outside the public product.
+Portfolio Graded reviews a portfolio homepage and presents letter grades, category feedback, and desktop and phone evidence. Version **1.2** migrates the reviewed v1.1.9 product to Netlify. The portfolio builder remains outside this release.
 
-The app uses React, Vite, Tailwind, and Express on Node 24. Firebase provides account identity; report records currently use server-owned persistent storage. Billing and other launch features require separate configuration and verification.
+## Local, preview, then main
 
-## Local work, preview review, then production
+1. Iterate and test locally with Node 24 and npm. Localhost needs no preview password.
+2. Publish a reviewed candidate deliberately to the Netlify `preview` alias for phone review.
+3. Verify the password gate, Google sign-in, grading, both screenshots, private saved reports and responsive layouts on the actual deployment.
+4. Nic reviews the preview before a separate main promotion. Main DNS and historical data transfer are separate migration steps.
 
-The maintained local `folio_grade` project is the source of this publication clone. Private operating notes, keys, user reports, saved screenshots, and runtime data are not part of the repository. Update this clone from reviewed source through its allowlist, then inspect the full Git diff and scan for secrets before publishing.
+The migration checkout uses branch `netlify-preview`. The previous `preview` branch is still associated with Railway, so pushing that branch is not the Netlify deployment procedure. No automatic repository build is configured for this new Netlify site. Keep deployments deliberate to avoid paying for uploads during every local iteration.
 
-1. Make quick iterations and run QA locally without uploading a deployment.
-2. When an update is ready for phone review, explicitly commit and push the reviewed candidate to `preview`.
-3. Verify the resulting separate HTTPS preview, including its password gate, version, account boundaries, and mobile behavior.
-4. After acceptance, merge the reviewed preview commit into `main`, explicitly deploy that exact commit to the production service, and verify it. The current production service is not connected to this repository for automatic Git deployment, so a merge alone does not publish it. A preview push does not itself approve a production merge.
+The original private local checkout contains additional unfinished candidate work. Do not overwrite or publish its credentials, data, screenshots or unreviewed changes when syncing source. This repository uses a publication allowlist.
 
-Provider linking, branch selection, secrets, preview address, and persistent storage must be configured separately. This repository does not create or point a domain merely by naming a branch `preview`.
-
-## Run locally
-
-Use Node 24 and npm:
+## Local development
 
 ```sh
 npm ci
 npm run check
 npm run test:security
-npm run test:builder
 npm run app
 ```
 
-`npm run app` builds the integrated application and starts the loopback-only local bootstrap on port 3000. Supply required local credentials privately. Authentication and provider-dependent features report their unavailable states if their credentials are absent. Do not commit `.env` files or credential files. `npm run dev` is the frontend development server; `npm run build:client` is a separate static-client build and does not supply the API.
+`npm run app` builds the integrated application and starts the loopback-only local bootstrap at localhost:3000. Supply credentials privately. Local operation retains its existing file store; it does not write to Netlify preview storage. `npm run dev` starts only the Vite frontend.
 
-## Hosted preview
+## Netlify preview
 
-The current deployment path is the existing Railway backend stack, packaged by `Dockerfile`. This is not a completed migration to Netlify. A static host alone does not provide the Express API, persistent report records, or browser capture runtime.
+- Team: Elevate Media (`nicholasdalexis`), shared with StillUnemployed.
+- Project: `portfoliograded`, ID `930bbc2d-8685-4f13-ac94-942f2b907f55`.
+- Preview: https://preview--portfoliograded.netlify.app
+- Dashboard: https://app.netlify.com/projects/portfoliograded
 
-The separate [phone-review preview](https://portfolio-graded-preview-preview.up.railway.app) is being configured and is not yet verified live by this publication snapshot. It is password protected. Cloud screenshots remain disabled until secure browser capture is fixed and verified; a healthy page is not evidence that screenshots work.
+After installing the Netlify CLI and linking this project:
 
-The Docker image builds the app, includes Chromium, and starts `node dist/index.js`. Configure hosted environment variables through the provider's private variable store, including the intended `APP_URL`, password hash, account credentials, and storage settings. Use a separate preview service and data volume. Keep one writer for the current report store, and keep unapproved billing, publishing, and notification features disabled. Do not copy production customer data into the preview.
+```sh
+netlify link --id 930bbc2d-8685-4f13-ac94-942f2b907f55
+netlify deploy --alias preview --context branch-deploy --build
+```
 
-`railway.json` selects the Dockerfile, one replica for the current single-writer report store, and `/healthz`. It clears the obsolete scaffold's start-command override so the image command applies. `/healthz` verifies the app process and version; it does not prove Chromium, sign-in, grading providers, or storage persistence are working. Verify those capabilities separately before claiming them.
+This is a preview deployment. Do not use `--prod` until main promotion is approved and its data/domain checklist is complete. Netlify's deploy result is not proof that the application works; run the hosted acceptance checks above.
 
-Configuration fields follow [Railway's current reference](https://docs.railway.com/config-as-code/reference). Railway currently labels this configuration format deprecated for legacy services after December 1, 2026 and recommends Infrastructure as Code. Check the target service's support before adopting a new deployment path.
+### Runtime and storage
+
+React/Vite assets are protected by an Edge Function. Modern Node 24 Functions serve the Express APIs. Grading starts an HMAC-authorized background function; the browser polls an owner-bound job record. Duplicate worker delivery cannot begin the same job twice. Jobs and quotas are bounded, and the default global scan concurrency is two.
+
+Netlify Database provides PostgreSQL transactions for existing report, history, preference, claim and quota operations. The preview database branch is `preview`; SQL migrations live under `netlify/database/migrations`. The current adapter uses a locked JSONB document with a 32 MB ceiling. This is a bounded preview implementation, not a claim of unlimited production scale. Never hold a database transaction across a crawl or model call.
+
+Screenshots use private Netlify Blobs and a serverless Chromium build. Access checks happen before reading a report's image. The browser capture retains URL/DNS and request-budget guards; the Lambda browser uses the provider-compatible process flags rather than the local Chrome OS sandbox. Production acceptance still needs screenshot retention limits, capacity/load review, legacy data migration, and domain cutover. The filesystem archive has its existing bounded retention; the new Blobs archive does not yet have automatic pruning.
+
+### Private environment
+
+Configure these through Netlify's environment settings, never source files: Firebase service account, existing AI provider key, preview password hash, stable preview-cookie secret, background-job HMAC secret, administrator IDs and exact allowed origins. Additional configuration includes `PG_STORAGE=netlify-db`, `PG_BLOB_NAMESPACE=preview`, `PG_DEPLOYMENT_ENV=preview`, `PG_NETLIFY_CAPTURE=true`, `SCREENSHOTS_ENABLED=true`, `PG_DATA_DIR=/tmp/portfolio-graded`, and `TRUST_PROXY_HOPS=1`.
+
+`BILLING_ENABLED=false` and `PG_USAGE_ENABLED=false` are intentional. The production usage worker is not yet adapted to this serverless release, and Netlify refuses to start it accidentally. Existing Firebase identity is shared; report records in this new preview are isolated from Railway. No historical reports are copied automatically.
+
+Firebase authorized domains and browser-key referrer restrictions must include the exact stable preview origin. Retain the API allowlist; do not remove restrictions to make sign-in work. Dynamic deployment permalinks are for internal worker dispatch and deployment verification, not user OAuth sign-in.
+
+### Firebase runtime compatibility
+
+`jwks-rsa` 4.1.0 synchronously requires ESM-only `jose`, which fails under Netlify's Lambda runtime. A small version/content-checked postinstall patch changes the two imports to asynchronous imports while retaining jose 6 and key verification behavior. It fails closed if upstream files change. See [upstream issue 507](https://github.com/auth0/node-jwks-rsa/issues/507). Remove the patch once the upstream compatible release is verified. The regression test starts Node with synchronous ESM disabled, verifies a real RSA token, and rejects a tampered token. No experimental runtime override is required.
+
+### Existing main hosting
+
+At this migration stage, portfoliograded.com and the old Railway preview remain unchanged. Keep Railway data available until backup, report migration, main acceptance, DNS/TLS and rollback checks are complete. A new Netlify preview alone does not stop Railway charges or migrate the custom domain.
