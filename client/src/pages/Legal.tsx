@@ -8,7 +8,7 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
-const LAST_UPDATED = "September 6, 2026";
+const LAST_UPDATED = "September 10, 2026";
 
 function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -50,8 +50,8 @@ export function Terms() {
       </Section>
       <Section heading="What the preview can inspect">
         <p>
-          This preview reads the public homepage HTML. Desktop and mobile screenshot capture works
-          in the local build; cloud capture is still being connected during this private preview.
+          This preview reads the public homepage HTML and requests desktop and mobile screenshots
+          in both the hosted private preview and the local build. Some sites may block or prevent capture.
           The numerical grade uses HTML signals. When browser capture succeeds, the report separately records opening-view layout, small-control and simple-text contrast observations. These limited samples do not verify project pages, aesthetic quality, complete accessibility, interactions or actual loading speed. We never bypass
           logins, paywalls, or access controls.
         </p>
@@ -128,7 +128,7 @@ export function Privacy() {
       <Section heading="Saved reports and change checks">
         <p>Reports are private to the signed-in account or the essential browser cookie that created them. Browser-created reports are not imported automatically. When you choose free sign-in to read a selected report’s feedback, we transfer that report and its associated checklist to your verified Google account if this browser still holds the original essential cookie. Other guest reports stay separate. The transfer records its date and original anonymous owner reference to verify retries; it does not enroll you in marketing. Opening a saved report does not run a new grade or replace its saved screenshots. A deliberate change check fetches the public homepage again without AI and compares its downloaded code. It does not establish that separate stylesheets, images, interactions or the whole website are unchanged.</p>
         <p>A requested new review also compares complete bounded homepage source, captured opening views and browser observations, along with the requested role and method version. When those match an accepted assessment, we can reuse its original grade, date and images without another AI explanation call. This does not establish that project pages or untested interactions are unchanged. A failed or incomplete check preserves the prior accepted result. Best-earned milestones are dated separately from the current report and only compared within the same method.</p>
-        <p>New reports reference the images captured during that review. Images use a limited rolling archive and may expire while their report and measurements remain. Older reports may not have archived images or a comparison fingerprint. We do not replace an expired historical screenshot with a new one and present it as the old capture.</p>
+        <p>New reports reference the images captured during that review. The local build uses a limited rolling image archive. Hosted screenshots are retained in private storage until removed; automatic expiry is not enabled in this preview. Older reports may not have archived images or a comparison fingerprint. We do not replace an expired historical screenshot with a new one and present it as the old capture.</p>
       </Section>
       <Section heading="How long we keep it">
         <p>
@@ -147,8 +147,9 @@ export function Privacy() {
       </Section>
       <Section heading="Who touches the data">
         <p>
-          The hosted private preview runs on Railway infrastructure. The local build runs on
-          Nic's computer. Anthropic
+          The hosted private preview runs on Netlify, with reports in its PostgreSQL database and
+          screenshots in private Netlify Blobs storage. Earlier Railway records and private backups
+          are retained for migration recovery. The local build runs on Nic's computer. Anthropic
           receives extracted homepage text and scan signals when AI analysis is enabled.
           Google Firebase handles sign-in verification and, when enabled, private operational usage storage. A configured Slack service receives aggregate operational milestones only. Stripe will handle payments when
           billing launches; payments are disabled in this preview. Saved reports, submitted
