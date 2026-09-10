@@ -1,3 +1,12 @@
+/*
+ * portfolio graded — Vite config (clean, post-Manus).
+ *
+ * 2026-07-09: rewritten. The previous config was the Manus scaffold and it
+ * INJECTED a session-replay/telemetry script (/__manus__/debug-collector.js)
+ * into every build, plus a storage proxy, a log-writing middleware, and the
+ * manus-runtime / jsx-loc plugins. All of it is gone. Nothing here phones
+ * home. Do not reintroduce.
+ */
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
@@ -14,14 +23,13 @@ export default defineConfig({
   },
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
-  publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  publicDir: false, // The old public directory contains only retired Manus debug files.
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
   server: {
     host: true,
-    allowedHosts: true,
     fs: { strict: true, deny: ["**/.*"] },
   },
 });

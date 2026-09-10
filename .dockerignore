@@ -1,0 +1,30 @@
+# The build context is an allowlist. Never send the surrounding product archive.
+**
+!Dockerfile
+!.dockerignore
+!package.json
+!package-lock.json
+!vite.config.ts
+!tsconfig.json
+!tsconfig.node.json
+!client/
+!client/**
+!shared/
+!shared/**
+!server/
+!server/**
+# Re-exclude private/runtime/test material from allowed source directories.
+**/.env
+**/.env.*
+**/node_modules/**
+**/data/**
+**/shots*/**
+**/tests/**
+**/*.test.ts
+**/*.test.tsx
+**/*.pem
+**/*.key
+**/*service-account*
+**/*serviceAccount*
+**/__manus__/**
+**/.DS_Store
